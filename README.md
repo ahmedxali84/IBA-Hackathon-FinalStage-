@@ -1,4 +1,4 @@
-# Neighbourly – Stage 2 (Supabase + Realtime Chat + H3 Radius Discovery)
+# Neighbourly – FinalStage 3 (Supabase + Realtime Chat + H3 Radius Discovery)
 
 This is a static frontend (HTML/CSS/JS) that connects to Supabase for:
 - Users (Seeker / Provider)

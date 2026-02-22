@@ -2,883 +2,861 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neighbourly - Local Services Marketplace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Neighbourly 2026 · Real‑time Services</title>
     
-    <!-- Font Awesome -->
+    <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- TailwindCSS (CDN) -->
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Uber H3 (geospatial indexing) -->
-    <script src="https://unpkg.com/h3-js@4.1.0/dist/h3-js.umd.js"></script>
     
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css">
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Tailwind Config -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#3b82f6',
-                        'primary-dark': '#2563eb',
-                        'primary-light': '#93c5fd',
-                        secondary: '#10b981',
-                        accent: '#f59e0b',
-                        'dark-bg': '#0f172a',
-                        'dark-card': '#1e293b',
-                        'dark-text': '#f8fafc',
-                        'dark-text-secondary': '#cbd5e1',
-                        dark: {
-                            bg: '#0f172a',
-                            card: '#1e293b',
-                            text: '#f8fafc',
-                            'text-secondary': '#cbd5e1'
-                        }
+                        primary: '#ff9900',
+                        'primary-dark': '#e47911',
+                        secondary: '#232f3e',
+                        'secondary-light': '#37475a',
+                        'dark-bg': '#0a0a0a',
+                        'card-bg': '#121212',
+                        'card-hover': '#1e1e1e',
+                        'text-primary': '#ffffff',
+                        'text-secondary': '#e0e0e0',
+                        'text-muted': '#a0a0a0',
+                        border: '#2a2a2a',
+                        'border-hover': '#ff9900'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                        'display': ['Poppins', 'sans-serif']
                     },
                     animation: {
-                        'fade-in': 'fadeIn 0.4s ease-out',
-                        'slide-in': 'slideIn 0.4s ease-out',
-                        'pulse': 'pulse 2s infinite'
+                        'fade-in': 'fadeIn 0.2s ease-in-out',
+                        'slide-up': 'slideUp 0.2s ease-out',
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'notification-slide': 'notificationSlide 0.3s ease-out',
+                        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        notificationSlide: {
+                            '0%': { opacity: '0', transform: 'translateX(20px)' },
+                            '100%': { opacity: '1', transform: 'translateX(0)' }
+                        }
                     }
                 }
             }
         }
     </script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-</head>
-<body class="bg-dark-bg text-dark-text min-h-screen">
     
-    <!-- Navigation -->
-    <nav class="glass-card border-b border-white/10 sticky top-0 z-50">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center h-16">
-                <!-- Logo -->
-                <div class="flex items-center space-x-3 cursor-pointer" onclick="showPage('landing')">
-                    <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                        <i class="fas fa-hands-helping text-white text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold text-white">Neighbourly</h1>
-                        <p class="text-xs text-dark-text-secondary">Local Services Marketplace</p>
-                    </div>
-                </div>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        /* Custom Scrollbar - Tailwind seperate */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e1e1e;
+            border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #ff9900;
+            border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #e47911;
+        }
+        
+        /* Modal Scroll */
+        .modal-scroll {
+            max-height: calc(90vh - 120px);
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        .modal-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .modal-scroll::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+        
+        .modal-scroll::-webkit-scrollbar-thumb {
+            background: #ff9900;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-[#0a0a0a] text-white antialiased font-sans">
 
-                <!-- Nav Links -->
-                <div id="nav-links" class="flex items-center space-x-4">
-                    <div id="auth-nav">
-                        <!-- Will be populated by JS -->
-                    </div>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-[#ff9900]/30 border-t-[#ff9900] rounded-full animate-spin mx-auto mb-6"></div>
+            <p class="text-white text-xl font-medium">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div id="alert-container" class="fixed top-24 right-4 z-50 max-w-md space-y-3"></div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 w-full z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-b border-[#2a2a2a] px-4 md:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <!-- Logo -->
+            <div onclick="window.showPage('landing')" class="flex items-center gap-3 cursor-pointer group">
+                <div class="w-10 h-10 rounded-lg bg-[#ff9900] flex items-center justify-center shadow-lg shadow-orange-600/30 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-handshake text-white text-xl"></i>
                 </div>
+                <div>
+                    <span class="text-2xl font-display font-bold tracking-tight text-white">NEIGHBOURLY</span>
+                    <span class="hidden md:inline ml-2 text-xs font-medium bg-[#ff9900]/20 text-[#ff9900] px-2 py-1 rounded-full">Live</span>
+                </div>
+                <span class="flex items-center gap-1 ml-2">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff9900] opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-[#ff9900]"></span>
+                    </span>
+                    <span class="text-xs text-[#ff9900] hidden md:inline">Real-time</span>
+                </span>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex items-center space-x-6">
+                <div class="relative">
+                    <button id="notification-bell" onclick="window.showPage('notifications')" class="text-[#e0e0e0] hover:text-[#ff9900] text-xl transition-colors relative">
+                        <i class="fas fa-bell"></i>
+                        <span id="notification-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse hidden">0</span>
+                    </button>
+                </div>
+                
+                <a href="#features" class="text-[#e0e0e0] hover:text-[#ff9900] text-sm font-medium transition-colors">Features</a>
+                <a href="#how-it-works" class="text-[#e0e0e0] hover:text-[#ff9900] text-sm font-medium transition-colors">How it works</a>
+                
+                <!-- Auth Nav -->
+                <div id="auth-nav" class="flex items-center gap-3"></div>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <div class="flex items-center gap-4 md:hidden">
+                <div class="relative">
+                    <button id="mobile-notification-bell" onclick="window.showPage('notifications')" class="text-[#e0e0e0] hover:text-[#ff9900] text-xl transition-colors">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <span id="mobile-notification-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse hidden">0</span>
+                </div>
+                <button id="mobile-menu-btn" class="text-white text-2xl">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-[#121212] mt-3 p-5 rounded-2xl border border-[#2a2a2a]">
+            <div class="flex flex-col space-y-4">
+                <a href="#features" class="text-[#e0e0e0] hover:text-[#ff9900] py-2">Features</a>
+                <a href="#how-it-works" class="text-[#e0e0e0] hover:text-[#ff9900] py-2">How it works</a>
+                <div id="mobile-auth-nav" class="pt-3 border-t border-[#2a2a2a]"></div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-        <!-- ===== LANDING PAGE ===== -->
-        <div id="landing-page" class="page animate-fade-in">
+    <div class="h-20"></div>
+
+    <main class="max-w-7xl mx-auto px-4 md:px-8 py-6">
+        
+        <!-- Landing Page -->
+        <div id="landing-page" class="page active animate-fade-in">
             <!-- Hero Section -->
-            <section class="relative rounded-2xl overflow-hidden mb-12">
-                <div class="absolute inset-0 bg-gradient-to-br from-primary/20 via-dark-bg to-secondary/20"></div>
-                <div class="relative glass-card rounded-2xl p-8 md:p-12">
-                    <div class="text-center max-w-4xl mx-auto">
-                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary mb-6">
-                            <i class="fas fa-hands-helping text-white text-3xl"></i>
+            <section class="relative rounded-2xl overflow-hidden mb-20">
+                <div class="absolute inset-0 bg-gradient-to-r from-[#ff9900]/20 via-transparent to-[#0a0a0a]"></div>
+                <div class="relative bg-[#121212] p-10 md:p-16 rounded-2xl border border-[#2a2a2a]">
+                    <div class="max-w-4xl">
+                        <div class="inline-flex items-center gap-2 bg-black/50 px-5 py-2 rounded-full border border-[#ff9900]/50 mb-8">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff9900] opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-[#ff9900]"></span>
+                            </span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-white">Live • Real-time services</span>
                         </div>
-                        <h1 class="text-4xl md:text-6xl font-bold mb-6">
-                            Connect with <span class="gradient-text">Local Services</span>
+                        <h1 class="text-5xl md:text-7xl font-display font-extrabold text-white leading-tight">
+                            Find <span class="text-[#ff9900]">trusted</span> local <br>services. <span class="text-[#ff9900]">Instantly.</span>
                         </h1>
-                        <p class="text-dark-text-secondary text-lg md:text-xl mb-8 leading-relaxed max-w-2xl mx-auto">
-                            Discover trusted service providers in your community. Book appointments, get things done, and support your neighbors.
+                        <p class="text-[#e0e0e0] text-xl md:text-2xl mt-6 max-w-2xl leading-relaxed">
+                            Location-based service requests. Real-time bidding. No refresh needed.
                         </p>
-                        <div class="flex flex-wrap justify-center gap-4">
-                            <button onclick="showPage('seeker-login')" 
-                                    class="btn-primary text-white px-8 py-4 rounded-xl font-semibold text-lg">
-                                <i class="fas fa-search mr-2"></i>Find Services
+                        <div class="flex flex-wrap gap-6 mt-12">
+                            <button onclick="window.showPage('seeker-login')" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-10 py-5 text-lg font-bold rounded-xl shadow-xl shadow-orange-600/30 transition-all hover:scale-105">
+                                <i class="fas fa-search mr-3"></i> Find a pro
                             </button>
-                            <button onclick="showPage('provider-login')" 
-                                    class="btn-secondary text-white px-8 py-4 rounded-xl font-semibold text-lg">
-                                <i class="fas fa-briefcase mr-2"></i>Offer Services
+                            <button onclick="window.showPage('provider-login')" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-10 py-5 text-lg font-bold rounded-xl border border-[#ff9900]/30 transition-all hover:scale-105">
+                                <i class="fas fa-briefcase mr-3"></i> Become provider
                             </button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Features -->
-            <section class="mb-12">
-                <h2 class="text-3xl font-bold text-white text-center mb-10">How Neighbourly Works</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div class="glass-card rounded-xl p-8 hover-card">
-                        <div class="flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 mb-6">
-                            <i class="fas fa-user-plus text-primary text-2xl"></i>
+            <!-- Stats -->
+            <section class="grid grid-cols-2 md:grid-cols-4 gap-5 mb-24">
+                <div class="bg-[#121212] rounded-2xl p-8 text-center border border-[#2a2a2a] hover:border-[#ff9900] transition-all">
+                    <div class="text-4xl font-display font-black text-[#ff9900]" id="stats-users">0</div>
+                    <div class="text-[#e0e0e0] text-sm mt-2">Registered Users</div>
+                </div>
+                <div class="bg-[#121212] rounded-2xl p-8 text-center border border-[#2a2a2a] hover:border-[#ff9900] transition-all">
+                    <div class="text-4xl font-display font-black text-[#ff9900]" id="stats-providers">0</div>
+                    <div class="text-[#e0e0e0] text-sm mt-2">Service Providers</div>
+                </div>
+                <div class="bg-[#121212] rounded-2xl p-8 text-center border border-[#2a2a2a] hover:border-[#ff9900] transition-all">
+                    <div class="text-4xl font-display font-black text-[#ff9900]" id="stats-services">0</div>
+                    <div class="text-[#e0e0e0] text-sm mt-2">Active Services</div>
+                </div>
+                <div class="bg-[#121212] rounded-2xl p-8 text-center border border-[#2a2a2a] hover:border-[#ff9900] transition-all">
+                    <div class="text-4xl font-display font-black text-[#ff9900]" id="stats-reviews">0</div>
+                    <div class="text-[#e0e0e0] text-sm mt-2">Total Reviews</div>
+                </div>
+            </section>
+
+            <!-- Real-time Demo Banner -->
+            <section class="mb-16">
+                <div class="bg-gradient-to-r from-[#ff9900]/20 to-[#ff9900]/20 rounded-2xl p-8 border border-[#ff9900]/30">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <div class="flex items-center gap-3">
+                            <span class="relative flex h-4 w-4">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff9900] opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-4 w-4 bg-[#ff9900]"></span>
+                            </span>
+                            <span class="text-white font-bold">REAL-TIME NOTIFICATIONS ACTIVE</span>
                         </div>
-                        <h3 class="text-xl font-bold text-white mb-4">1. Create Account</h3>
-                        <p class="text-dark-text-secondary">Sign up as a service seeker or provider. Complete your profile in minutes.</p>
-                    </div>
-                    
-                    <div class="glass-card rounded-xl p-8 hover-card">
-                        <div class="flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-secondary/20 to-secondary/5 mb-6">
-                            <i class="fas fa-search text-secondary text-2xl"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-4">2. Find or List</h3>
-                        <p class="text-dark-text-secondary">Browse available services or list your own with detailed descriptions and pricing.</p>
-                    </div>
-                    
-                    <div class="glass-card rounded-xl p-8 hover-card">
-                        <div class="flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 mb-6">
-                            <i class="fas fa-handshake text-accent text-2xl"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-4">3. Connect & Book</h3>
-                        <p class="text-dark-text-secondary">Book services directly, communicate with providers, and get things done.</p>
+                        <span class="text-[#e0e0e0] text-sm">Service requests appear instantly • No refresh needed</span>
                     </div>
                 </div>
             </section>
 
-            <!-- Popular Categories -->
-            <section class="mb-8">
-                <h2 class="text-2xl font-bold text-white mb-6">Popular Service Categories</h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="glass-card rounded-xl p-6 text-center hover-card">
-                        <i class="fas fa-home text-primary text-2xl mb-3"></i>
-                        <h4 class="font-semibold text-white">Home Services</h4>
-                    </div>
-                    <div class="glass-card rounded-xl p-6 text-center hover-card">
-                        <i class="fas fa-bolt text-secondary text-2xl mb-3"></i>
-                        <h4 class="font-semibold text-white">Electrical</h4>
-                    </div>
-                    <div class="glass-card rounded-xl p-6 text-center hover-card">
-                        <i class="fas fa-tools text-accent text-2xl mb-3"></i>
-                        <h4 class="font-semibold text-white">Repair</h4>
-                    </div>
-                    <div class="glass-card rounded-xl p-6 text-center hover-card">
-                        <i class="fas fa-chalkboard-teacher text-primary text-2xl mb-3"></i>
-                        <h4 class="font-semibold text-white">Tutoring</h4>
-                    </div>
+            <!-- Latest Reviews -->
+            <section id="testimonials" class="mb-24">
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="w-1 h-8 bg-[#ff9900]"></div>
+                    <h2 class="text-3xl font-display font-bold text-white">Latest Reviews</h2>
                 </div>
+                <div id="landing-reviews-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
             </section>
         </div>
 
-        <!-- ===== SEEKER LOGIN PAGE ===== -->
-        <div id="seeker-login-page" class="page hidden animate-fade-in">
-            <div class="max-w-md mx-auto">
-                <div class="glass-card rounded-2xl p-8">
-                    <div class="text-center mb-8">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/50 mb-4">
-                            <i class="fas fa-search text-white text-2xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-white mb-2">Welcome Back</h2>
-                        <p class="text-dark-text-secondary">Find services that match your needs</p>
+        <!-- Seeker Login -->
+        <div id="seeker-login-page" class="page hidden">
+            <div class="max-w-md mx-auto bg-[#121212] rounded-3xl p-8 md:p-10 border border-[#2a2a2a]">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-[#ff9900]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-search text-[#ff9900] text-3xl"></i>
                     </div>
-
-                    <div id="seeker-login-error" class="hidden bg-red-900/20 border border-red-800/30 text-red-300 px-4 py-3 rounded-xl mb-6">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <span id="seeker-login-error-text"></span>
+                    <h2 class="text-3xl font-display font-bold text-white">Welcome Back</h2>
+                    <p class="text-[#e0e0e0] mt-1">Login to find services</p>
+                    <div class="mt-2 text-xs bg-[#ff9900]/10 text-[#ff9900] px-3 py-1 rounded-full inline-block">
+                        <i class="fas fa-user mr-1"></i> Seeker Login Only
                     </div>
-
-                    <form id="seeker-login-form">
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Email Address</label>
-                            <input type="email" 
-                                   id="seeker-login-email" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="you@example.com"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Password</label>
-                            <input type="password" 
-                                   id="seeker-login-password" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="••••••••"
-                                   required>
-                        </div>
-
-                        <button type="submit" 
-                                class="btn-primary w-full text-white py-3 rounded-xl font-semibold">
-                            <i class="fas fa-sign-in-alt mr-2"></i>Login to Find Services
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-6">
-                        <p class="text-dark-text-secondary mb-2">New to Neighbourly?</p>
-                        <button onclick="showPage('seeker-signup')" 
-                                class="btn-secondary w-full text-white py-3 rounded-xl font-semibold">
-                            <i class="fas fa-user-plus mr-2"></i>Create Seeker Account
-                        </button>
-                    </div>
-
-                    <div class="text-center mt-6 pt-6 border-t border-white/10">
-                        <button onclick="showPage('landing')" 
-                                class="text-dark-text-secondary hover:text-white">
-                            <i class="fas fa-arrow-left mr-2"></i>Back to Home
-                        </button>
-                    </div>
+                </div>
+                <div id="seeker-login-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="seeker-login-error-text"></span>
+                </div>
+                <form id="seeker-login-form">
+                    <input type="email" id="seeker-login-email" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Email Address" required>
+                    <input type="password" id="seeker-login-password" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-8 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Password" required>
+                    <input type="hidden" id="seeker-login-role" value="SEEKER">
+                    <button type="submit" class="w-full bg-[#ff9900] hover:bg-[#e47911] text-white py-4 rounded-xl font-bold text-lg transition-all hover:scale-[1.02]">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Login as Seeker
+                    </button>
+                </form>
+                <div class="text-center mt-8">
+                    <span class="text-[#a0a0a0]">New to Neighbourly?</span>
+                    <button onclick="window.showPage('seeker-signup')" class="text-[#ff9900] font-semibold ml-2 hover:underline">Create Account</button>
+                </div>
+                <div class="text-center mt-4">
+                    <button onclick="window.showPage('provider-login')" class="text-[#a0a0a0] hover:text-[#ff9900] text-sm">
+                        <i class="fas fa-briefcase mr-1"></i> Are you a provider? Login here
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- ===== SEEKER SIGNUP PAGE ===== -->
-        <div id="seeker-signup-page" class="page hidden animate-fade-in">
-            <div class="max-w-md mx-auto">
-                <div class="glass-card rounded-2xl p-8">
-                    <div class="text-center mb-8">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/50 mb-4">
-                            <i class="fas fa-user-plus text-white text-2xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-white mb-2">Join as Seeker</h2>
-                        <p class="text-dark-text-secondary">Find and book local services</p>
+        <!-- Seeker Signup -->
+        <div id="seeker-signup-page" class="page hidden">
+            <div class="max-w-md mx-auto bg-[#121212] rounded-3xl p-8 md:p-10 border border-[#2a2a2a]">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-[#ff9900]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-user-plus text-[#ff9900] text-3xl"></i>
                     </div>
-
-                    <div id="seeker-signup-error" class="hidden bg-red-900/20 border border-red-800/30 text-red-300 px-4 py-3 rounded-xl mb-6">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <span id="seeker-signup-error-text"></span>
-                    </div>
-
-                    <form id="seeker-signup-form">
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Full Name</label>
-                            <input type="text" 
-                                   id="seeker-signup-name" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="John Doe"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Email Address</label>
-                            <input type="email" 
-                                   id="seeker-signup-email" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="you@example.com"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Password</label>
-                            <input type="password" 
-                                   id="seeker-signup-password" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="At least 6 characters"
-                                   minlength="6"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Confirm Password</label>
-                            <input type="password" 
-                                   id="seeker-signup-confirm" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="Confirm password"
-                                   minlength="6"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="flex items-start">
-                                <input type="checkbox" 
-                                       class="mt-1 mr-3 bg-dark-bg border-white/20 rounded focus:ring-primary focus:ring-2"
-                                       required>
-                                <span class="text-dark-text-secondary text-sm">
-                                    I agree to the <a href="#" class="text-primary hover:underline">Terms</a> and 
-                                    <a href="#" class="text-primary hover:underline">Privacy Policy</a>
-                                </span>
-                            </label>
-                        </div>
-
-                        <button type="submit" 
-                                class="btn-primary w-full text-white py-3 rounded-xl font-semibold">
-                            <i class="fas fa-user-plus mr-2"></i>Create Seeker Account
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-6">
-                        <p class="text-dark-text-secondary mb-2">Already have an account?</p>
-                        <button onclick="showPage('seeker-login')" 
-                                class="btn-secondary w-full text-white py-3 rounded-xl font-semibold">
-                            <i class="fas fa-sign-in-alt mr-2"></i>Login Instead
-                        </button>
-                    </div>
+                    <h2 class="text-3xl font-display font-bold text-white">Join as Seeker</h2>
+                    <p class="text-[#e0e0e0] mt-1">Get instant service notifications</p>
+                </div>
+                <div id="seeker-signup-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="seeker-signup-error-text"></span>
+                </div>
+                <form id="seeker-signup-form">
+                    <input type="text" id="seeker-signup-name" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Full Name" required>
+                    <input type="email" id="seeker-signup-email" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Email Address" required>
+                    <input type="password" id="seeker-signup-password" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Password (min 6)" minlength="6" required>
+                    <input type="password" id="seeker-signup-confirm" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-5 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Confirm Password" required>
+                    <input type="hidden" id="seeker-signup-role" value="SEEKER">
+                    <button type="submit" class="w-full bg-[#ff9900] hover:bg-[#e47911] text-white py-4 rounded-xl font-bold text-lg transition-all hover:scale-[1.02]">
+                        <i class="fas fa-user-plus mr-2"></i> Create Account
+                    </button>
+                </form>
+                <div class="text-center mt-6">
+                    <span class="text-[#a0a0a0]">Already have an account?</span>
+                    <button onclick="window.showPage('seeker-login')" class="text-[#ff9900] font-semibold ml-2 hover:underline">Login</button>
                 </div>
             </div>
         </div>
 
-        <!-- ===== PROVIDER LOGIN PAGE ===== -->
-        <div id="provider-login-page" class="page hidden animate-fade-in">
-            <div class="max-w-md mx-auto">
-                <div class="glass-card rounded-2xl p-8">
-                    <div class="text-center mb-8">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-secondary to-secondary/50 mb-4">
-                            <i class="fas fa-briefcase text-white text-2xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-white mb-2">Provider Login</h2>
-                        <p class="text-dark-text-secondary">Manage your services and bookings</p>
+        <!-- Provider Login -->
+        <div id="provider-login-page" class="page hidden">
+            <div class="max-w-md mx-auto bg-[#121212] rounded-3xl p-8 md:p-10 border border-[#2a2a2a]">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-[#ff9900]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-briefcase text-[#ff9900] text-3xl"></i>
                     </div>
-
-                    <div id="provider-login-error" class="hidden bg-red-900/20 border border-red-800/30 text-red-300 px-4 py-3 rounded-xl mb-6">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <span id="provider-login-error-text"></span>
+                    <h2 class="text-3xl font-display font-bold text-white">Provider Login</h2>
+                    <p class="text-[#e0e0e0] mt-1">Send instant service offers</p>
+                    <div class="mt-2 text-xs bg-[#ff9900]/10 text-[#ff9900] px-3 py-1 rounded-full inline-block">
+                        <i class="fas fa-user-tie mr-1"></i> Provider Login Only
                     </div>
-
-                    <form id="provider-login-form">
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Email Address</label>
-                            <input type="email" 
-                                   id="provider-login-email" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="provider@example.com"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Password</label>
-                            <input type="password" 
-                                   id="provider-login-password" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="••••••••"
-                                   required>
-                        </div>
-
-                        <button type="submit" 
-                                class="btn-primary w-full text-white py-3 rounded-xl font-semibold">
-                            <i class="fas fa-sign-in-alt mr-2"></i>Login as Provider
-                        </button>
-                    </form>
-
-                    <div class="text-center mt-6">
-                        <p class="text-dark-text-secondary mb-2">New provider?</p>
-                        <button onclick="showPage('provider-signup')" 
-                                class="btn-secondary w-full text-white py-3 rounded-xl font-semibold">
-                            <i class="fas fa-user-plus mr-2"></i>Register as Provider
-                        </button>
-                    </div>
+                </div>
+                <div id="provider-login-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="provider-login-error-text"></span>
+                </div>
+                <form id="provider-login-form">
+                    <input type="email" id="provider-login-email" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Email Address" required>
+                    <input type="password" id="provider-login-password" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-8 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Password" required>
+                    <input type="hidden" id="provider-login-role" value="PROVIDER">
+                    <button type="submit" class="w-full bg-[#ff9900] hover:bg-[#e47911] text-white py-4 rounded-xl font-bold text-lg transition-all hover:scale-[1.02]">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Login as Provider
+                    </button>
+                </form>
+                <div class="text-center mt-7">
+                    <span class="text-[#a0a0a0]">New provider?</span>
+                    <button onclick="window.showPage('provider-signup')" class="text-[#ff9900] font-semibold ml-2 hover:underline">Register</button>
+                </div>
+                <div class="text-center mt-4">
+                    <button onclick="window.showPage('seeker-login')" class="text-[#a0a0a0] hover:text-[#ff9900] text-sm">
+                        <i class="fas fa-search mr-1"></i> Are you a seeker? Login here
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- ===== PROVIDER SIGNUP PAGE ===== -->
-        <div id="provider-signup-page" class="page hidden animate-fade-in">
-            <div class="max-w-md mx-auto">
-                <div class="glass-card rounded-2xl p-8">
-                    <div class="text-center mb-8">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-secondary to-secondary/50 mb-4">
-                            <i class="fas fa-briefcase text-white text-2xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-white mb-2">Join as Provider</h2>
-                        <p class="text-dark-text-secondary">Offer services to your community</p>
+        <!-- Provider Signup -->
+        <div id="provider-signup-page" class="page hidden">
+            <div class="max-w-md mx-auto bg-[#121212] rounded-3xl p-8 md:p-10 border border-[#2a2a2a]">
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-[#ff9900]/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-user-tie text-[#ff9900] text-3xl"></i>
                     </div>
-
-                    <div id="provider-signup-error" class="hidden bg-red-900/20 border border-red-800/30 text-red-300 px-4 py-3 rounded-xl mb-6">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        <span id="provider-signup-error-text"></span>
-                    </div>
-
-                    <form id="provider-signup-form">
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Full Name</label>
-                            <input type="text" 
-                                   id="provider-signup-name" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="John Doe"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Email Address</label>
-                            <input type="email" 
-                                   id="provider-signup-email" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="provider@example.com"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Password</label>
-                            <input type="password" 
-                                   id="provider-signup-password" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="At least 6 characters"
-                                   minlength="6"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Confirm Password</label>
-                            <input type="password" 
-                                   id="provider-signup-confirm" 
-                                   class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                   placeholder="Confirm password"
-                                   minlength="6"
-                                   required>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="block text-dark-text-secondary mb-2">Service Category</label>
-                            <select id="provider-category" 
-                                    class="input-field w-full rounded-xl px-4 py-3 text-white"
-                                    required>
-                                <option value="">Select category</option>
-                                <option value="Home Services">Home Services</option>
-                                <option value="Electrical">Electrical</option>
-                                <option value="Plumbing">Plumbing</option>
-                                <option value="Cleaning">Cleaning</option>
-                                <option value="Tutoring">Tutoring</option>
-                                <option value="Delivery">Delivery</option>
-                                <option value="Repair">Repair</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-6">
-                            <label class="flex items-start">
-                                <input type="checkbox" 
-                                       class="mt-1 mr-3 bg-dark-bg border-white/20 rounded focus:ring-primary focus:ring-2"
-                                       required>
-                                <span class="text-dark-text-secondary text-sm">
-                                    I agree to the <a href="#" class="text-primary hover:underline">Terms</a> and 
-                                    <a href="#" class="text-primary hover:underline">Privacy Policy</a>
-                                </span>
-                            </label>
-                        </div>
-
-                        <button type="submit" 
-                                class="btn-primary w-full text-white py-3 rounded-xl font-semibold">
-                            <i class="fas fa-user-plus mr-2"></i>Register as Provider
-                        </button>
-                    </form>
+                    <h2 class="text-3xl font-display font-bold text-white">Join as Provider</h2>
+                    <p class="text-[#e0e0e0] mt-1">Send real-time service offers</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- ===== SEEKER MARKETPLACE ===== -->
-        <div id="seeker-marketplace-page" class="page hidden animate-fade-in">
-            <!-- Header -->
-            <div class="mb-8">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Service Marketplace</h2>
-                        <p class="text-dark-text-secondary">Find and book services from trusted providers</p>
+                <div id="provider-signup-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6 flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="provider-signup-error-text"></span>
+                </div>
+                <form id="provider-signup-form">
+                    <input type="text" id="provider-signup-name" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Full Name" required>
+                    <input type="email" id="provider-signup-email" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Email Address" required>
+                    <input type="password" id="provider-signup-password" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Password (min 6)" minlength="6" required>
+                    <input type="password" id="provider-signup-confirm" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Confirm Password" required>
+                    
+                    <div class="mb-4 p-5 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a]">
+                        <h4 class="text-white font-bold mb-3 flex items-center gap-2">
+                            <i class="fas fa-map-marker-alt text-[#ff9900]"></i> Service Location
+                        </h4>
+                        <div class="space-y-3">
+                            <input type="text" id="provider-address" class="w-full bg-[#121212] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Your service area address" required>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="provider-lat" class="w-full bg-[#121212] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Latitude" readonly>
+                                <input type="text" id="provider-lng" class="w-full bg-[#121212] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Longitude" readonly>
+                            </div>
+                            <button type="button" onclick="window.getProviderLocation()" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-4 py-2 rounded-lg text-sm transition-all w-full">
+                                <i class="fas fa-location-crosshairs mr-2"></i> Detect My Location
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex flex-col md:flex-row items-start md:items-center space-y-3 md:space-y-0 md:space-x-4 w-full md:w-auto">
-                        <input type="text" 
-                               id="seeker-search" 
-                               class="input-field rounded-xl px-4 py-3 text-white w-full md:w-64"
-                               placeholder="Search services...">
-                        <select id="seeker-category" 
-                                class="input-field rounded-xl px-4 py-3 text-white">
-                            <option value="">All Categories</option>
+                    
+                    <div class="mb-4 p-5 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a]">
+                        <h4 class="text-white font-bold mb-3 flex items-center gap-2">
+                            <i class="fas fa-credit-card text-[#ff9900]"></i> Payment Details
+                        </h4>
+                        <select id="provider-payment-method" class="w-full bg-[#121212] border border-[#2a2a2a] rounded-xl px-4 py-3 mb-3 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
+                            <option value="">Select Preferred Payment</option>
+                            <option value="JazzCash">JazzCash</option>
+                            <option value="EasyPaisa">EasyPaisa</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Cash">Cash</option>
                         </select>
-
-                        <!-- Location Filters (Uber H3) -->
-                        <button id="use-my-location" type="button"
-                                class="btn-secondary text-white px-4 py-3 rounded-xl font-semibold w-full md:w-auto">
-                            <i class="fas fa-location-crosshairs mr-2"></i>Use My Location
-                        </button>
-                        <select id="seeker-radius" class="input-field rounded-xl px-4 py-3 text-white w-full md:w-auto">
-                            <option value="">Any distance</option>
-                            <option value="5">Within 5 km</option>
-                            <option value="10">Within 10 km</option>
-                            <option value="25">Within 25 km</option>
-                        </select>
+                        <input type="text" id="provider-payment-detail" class="w-full bg-[#121212] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Account Number / IBAN / Phone Number" required>
                     </div>
-                </div>
-
-                <!-- Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="total-services">0</div>
-                            <div class="text-dark-text-secondary text-sm">Available Services</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="active-providers">0</div>
-                            <div class="text-dark-text-secondary text-sm">Active Providers</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="avg-price">PKR 0</div>
-                            <div class="text-dark-text-secondary text-sm">Average Price</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="total-bookings">0</div>
-                            <div class="text-dark-text-secondary text-sm">Total Bookings</div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Map (shows services + your location) -->
-                <div id="seeker-map-wrap" class="hidden mb-6 bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-white font-bold"><i class="fas fa-map-marked-alt mr-2 text-primary"></i>Nearby Services Map</h3>
-                        <button id="seeker-map-hide" class="text-gray-300 hover:text-white text-sm px-3 py-1 rounded-lg bg-black/20 border border-white/10">Hide</button>
-                    </div>
-                    <div id="seeker-map" style="height: 320px; border-radius: 16px; overflow: hidden;"></div>
-                    <p class="text-gray-400 text-xs mt-3">Showing your location and nearby providers/services inside the selected radius.</p>
-                </div>
-
-                <!-- Services Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="seeker-services-grid">
-                    <!-- Services will be loaded here -->
-                </div>
-
-                <!-- No Results -->
-                <div id="seeker-no-results" class="hidden text-center py-12">
-                    <i class="fas fa-search text-4xl text-dark-text-secondary mb-4"></i>
-                    <p class="text-dark-text-secondary">No services found matching your criteria</p>
-                </div>
+                    
+                    <select id="provider-category" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-4 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
+                        <option value="">Select Service Category</option>
+                        <option value="Home Services">Home Services</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Tutoring">Tutoring</option>
+                        <option value="Delivery">Delivery</option>
+                        <option value="Repair">Repair</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    
+                    <input type="text" id="provider-phone" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-4 mb-5 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Phone Number" required>
+                    
+                    <input type="hidden" id="provider-signup-role" value="PROVIDER">
+                    
+                    <button type="submit" class="w-full bg-[#ff9900] hover:bg-[#e47911] text-white py-4 rounded-xl font-bold text-lg transition-all hover:scale-[1.02]">
+                        <i class="fas fa-user-plus mr-2"></i> Register as Provider
+                    </button>
+                </form>
             </div>
         </div>
 
-        <!-- ===== SEEKER DASHBOARD ===== -->
-        <div id="seeker-dashboard-page" class="page hidden animate-slide-in">
-            <!-- Header -->
-            <div class="mb-8">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                    <div>
-                        <h2 class="text-2xl font-bold text-white" id="seeker-greeting">Welcome</h2>
-                        <p class="text-dark-text-secondary">Manage your bookings and find new services</p>
-                    </div>
-                    <div class="flex space-x-3 mt-4 md:mt-0">
-                        <button onclick="showPage('seeker-marketplace')" 
-                                class="btn-primary text-white px-4 py-2 rounded-xl font-semibold">
-                            <i class="fas fa-search mr-2"></i>Browse Services
-                        </button>
-                        <button onclick="showPage('chat')" 
-                                class="btn-secondary text-white px-4 py-2 rounded-xl font-semibold">
-                            <i class="fas fa-comments mr-2"></i>Messages
-                        </button>
-                        <button onclick="logout()" 
-                                class="btn-secondary text-white px-4 py-2 rounded-xl font-semibold">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="seeker-total-bookings">0</div>
-                            <div class="text-dark-text-secondary text-sm">Total Bookings</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="seeker-pending">0</div>
-                            <div class="text-dark-text-secondary text-sm">Pending</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="seeker-approved">0</div>
-                            <div class="text-dark-text-secondary text-sm">Approved</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="seeker-completed">0</div>
-                            <div class="text-dark-text-secondary text-sm">Completed</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="mb-8">
-                <h3 class="text-xl font-bold text-white mb-4">Quick Actions</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onclick="showPage('seeker-marketplace')" 
-                            class="glass-card rounded-xl p-6 text-left hover-card">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mr-4">
-                                <i class="fas fa-search text-primary text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-white">Browse Services</h4>
-                                <p class="text-dark-text-secondary text-sm">Find new services</p>
-                            </div>
-                        </div>
-                        <p class="text-dark-text-secondary text-sm">Explore available services in marketplace</p>
-                    </button>
-                    
-                    <button onclick="viewAllBookings()" 
-                            class="glass-card rounded-xl p-6 text-left hover-card">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/5 flex items-center justify-center mr-4">
-                                <i class="fas fa-calendar-check text-secondary text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-white">My Bookings</h4>
-                                <p class="text-dark-text-secondary text-sm">View all bookings</p>
-                            </div>
-                        </div>
-                        <p class="text-dark-text-secondary text-sm">Check status of your bookings</p>
-                    </button>
-                    
-                    <button onclick="viewProfile()" 
-                            class="glass-card rounded-xl p-6 text-left hover-card">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center mr-4">
-                                <i class="fas fa-user text-accent text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-white">My Profile</h4>
-                                <p class="text-dark-text-secondary text-sm">Update information</p>
-                            </div>
-                        </div>
-                        <p class="text-dark-text-secondary text-sm">View and edit your profile</p>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Recent Bookings -->
-            <div>
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-white">Recent Bookings</h3>
-                    <button onclick="viewAllBookings()" 
-                            class="text-primary hover:text-primary-light font-semibold text-sm">
-                        View All
-                    </button>
-                </div>
-                <div class="glass-card rounded-xl overflow-hidden">
-                    <div id="seeker-recent-bookings">
-                        <!-- Bookings will be loaded here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== PROVIDER DASHBOARD ===== -->
-        <div id="provider-dashboard-page" class="page hidden animate-slide-in">
-            <!-- Header -->
-            <div class="mb-8">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                    <div>
-                        <h2 class="text-2xl font-bold text-white" id="provider-greeting">Provider Dashboard</h2>
-                        <p class="text-dark-text-secondary">Manage your services and bookings</p>
-                    </div>
-                    <div class="flex space-x-3 mt-4 md:mt-0">
-                        <button onclick="showCreateServiceModal()" 
-                                class="btn-primary text-white px-4 py-2 rounded-xl font-semibold">
-                            <i class="fas fa-plus mr-2"></i>Create Service
-                        </button>
-                        <button onclick="showPage('chat')" 
-                                class="btn-secondary text-white px-4 py-2 rounded-xl font-semibold">
-                            <i class="fas fa-comments mr-2"></i>Messages
-                        </button>
-                        <button onclick="logout()" 
-                                class="btn-secondary text-white px-4 py-2 rounded-xl font-semibold">
-                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="provider-active-services">0</div>
-                            <div class="text-dark-text-secondary text-sm">Active Services</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="provider-total-bookings">0</div>
-                            <div class="text-dark-text-secondary text-sm">Total Bookings</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="provider-pending">0</div>
-                            <div class="text-dark-text-secondary text-sm">Pending</div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-4">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-white mb-1" id="provider-revenue">PKR 0</div>
-                            <div class="text-dark-text-secondary text-sm">Revenue</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="mb-8">
-                <h3 class="text-xl font-bold text-white mb-4">Quick Actions</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onclick="showCreateServiceModal()" 
-                            class="glass-card rounded-xl p-6 text-left hover-card">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mr-4">
-                                <i class="fas fa-plus text-primary text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-white">Create Service</h4>
-                                <p class="text-dark-text-secondary text-sm">Add new service</p>
-                            </div>
-                        </div>
-                        <p class="text-dark-text-secondary text-sm">List a new service for seekers to book</p>
-                    </button>
-                    
-                    <button onclick="manageServices()" 
-                            class="glass-card rounded-xl p-6 text-left hover-card">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/5 flex items-center justify-center mr-4">
-                                <i class="fas fa-cog text-secondary text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-white">Manage Services</h4>
-                                <p class="text-dark-text-secondary text-sm">Edit your services</p>
-                            </div>
-                        </div>
-                        <p class="text-dark-text-secondary text-sm">Update or delete your listed services</p>
-                    </button>
-                    
-                    <button onclick="manageBookings()" 
-                            class="glass-card rounded-xl p-6 text-left hover-card">
-                        <div class="flex items-center mb-4">
-                            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center mr-4">
-                                <i class="fas fa-calendar-check text-accent text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-semibold text-white">Manage Bookings</h4>
-                                <p class="text-dark-text-secondary text-sm">View booking requests</p>
-                            </div>
-                        </div>
-                        <p class="text-dark-text-secondary text-sm">Approve or reject booking requests</p>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Recent Booking Requests -->
-            <div>
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-white">Recent Booking Requests</h3>
-                    <button onclick="manageBookings()" 
-                            class="text-primary hover:text-primary-light font-semibold text-sm">
-                        View All
-                    </button>
-                </div>
-                <div class="glass-card rounded-xl overflow-hidden">
-                    <div id="provider-recent-bookings">
-                        <!-- Bookings will be loaded here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== SERVICE DETAIL PAGE ===== -->
-        <div id="service-detail-page" class="page hidden animate-fade-in">
-            <div class="glass-card rounded-2xl p-8">
-                <button onclick="goBackFromDetail()" 
-                        class="text-dark-text-secondary hover:text-white mb-6">
-                    <i class="fas fa-arrow-left mr-2"></i>Back
-                </button>
-                <div id="service-detail-content">
-                    <!-- Service details will be loaded here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== CHAT PAGE (Provider <-> Seeker) ===== -->
-        <div id="chat-page" class="page hidden animate-fade-in">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <!-- Notifications Page -->
+        <div id="notifications-page" class="page hidden">
+            <div class="flex justify-between items-center mb-8">
                 <div>
-                    <h2 class="text-2xl font-bold text-white">Messages</h2>
-                    <p class="text-dark-text-secondary">Chat with your providers/seekers</p>
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-3xl font-display font-bold text-white">Notifications</h2>
+                        <span class="flex items-center gap-1 bg-[#ff9900]/20 px-3 py-1 rounded-full">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff9900] opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-[#ff9900]"></span>
+                            </span>
+                            <span class="text-xs text-[#ff9900] font-semibold">LIVE</span>
+                        </span>
+                    </div>
+                    <p class="text-[#e0e0e0] mt-1">Instant service requests and offers</p>
                 </div>
                 <div class="flex gap-3">
-                    <button onclick="goBackFromChat()" class="btn-secondary text-white px-4 py-2 rounded-xl font-semibold">
-                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    <button onclick="window.markAllNotificationsRead()" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                        <i class="fas fa-check-double mr-2"></i> Mark all read
+                    </button>
+                    <button onclick="window.goBackFromNotifications()" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                        <i class="fas fa-arrow-left mr-2"></i> Back
                     </button>
                 </div>
+            </div>
+
+            <!-- Real-time Status Bar -->
+            <div class="bg-[#121212] rounded-xl p-4 mb-6 border border-[#2a2a2a] flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff9900] opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-[#ff9900]"></span>
+                    </span>
+                    <span class="text-white font-medium">Connected to real-time server</span>
+                </div>
+                <span class="text-[#a0a0a0] text-sm">Updates appear instantly • No refresh needed</span>
+            </div>
+
+            <!-- Notifications List with Scroll -->
+            <div id="notifications-container" class="space-y-3 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2"></div>
+        </div>
+
+        <!-- Seeker Marketplace -->
+        <div id="seeker-marketplace-page" class="page hidden">
+            <div class="mb-8">
+                <!-- Location-based Request Section -->
+                <div class="mb-6 p-4 bg-[#121212] rounded-xl border border-[#2a2a2a]">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-white">📍 Location Based Services</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs bg-[#ff9900]/20 text-[#ff9900] px-2 py-1 rounded-full">Real-time</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-[#1e1e1e] p-4 rounded-xl border border-[#2a2a2a]">
+                            <h4 class="text-white font-semibold mb-3">📍 Your Location</h4>
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-2 text-[#e0e0e0]">
+                                    <i class="fas fa-map-marker-alt text-[#ff9900]"></i>
+                                    <span id="user-location-display" class="truncate flex-1">Not set</span>
+                                </div>
+                                <button onclick="window.updateUserLocation()" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-4 py-2 rounded-lg text-sm transition-all w-full">
+                                    <i class="fas fa-location-crosshairs mr-2"></i> Update My Location
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-[#1e1e1e] p-4 rounded-xl border border-[#2a2a2a]">
+                            <h4 class="text-white font-semibold mb-3">🚗 Quick Request</h4>
+                            <p class="text-[#a0a0a0] text-sm mb-3">Post your requirement and nearby providers will respond</p>
+                            <button onclick="window.showQuickRequestModal()" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-4 py-2 rounded-lg text-sm transition-all w-full">
+                                <i class="fas fa-bolt mr-2"></i> Post Quick Request
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regular Browse Section -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                    <div>
+                        <h2 class="text-4xl font-display font-bold text-white">Service Marketplace</h2>
+                        <p class="text-[#e0e0e0] mt-1">Browse or post location-based requests</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3 w-full md:w-auto">
+                        <div class="relative w-full md:w-72">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[#a0a0a0]"></i>
+                            <input type="text" id="seeker-search" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl pl-12 pr-4 py-3 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Search services...">
+                        </div>
+                        <select id="seeker-category" class="bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Active Requests Section with Scroll -->
+                <div id="active-requests-section" class="mb-8 hidden">
+                    <h3 class="text-2xl font-bold text-white mb-4">Your Active Requests</h3>
+                    <div id="seeker-active-requests" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2"></div>
+                </div>
+
+                <!-- Service Providers Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="seeker-services-grid"></div>
+                <div id="seeker-no-results" class="hidden text-center py-20">
+                    <i class="fas fa-search text-6xl text-[#ff9900]/50 mb-6"></i>
+                    <h3 class="text-2xl font-bold text-white mb-2">No Services Found</h3>
+                    <p class="text-[#a0a0a0]">Try adjusting your search filters or post a quick request</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seeker Dashboard -->
+        <div id="seeker-dashboard-page" class="page hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
+                <div>
+                    <h2 class="text-4xl font-display font-bold text-white" id="seeker-greeting">Welcome!</h2>
+                    <p class="text-[#e0e0e0] mt-1">Manage your bookings and requests</p>
+                </div>
+                <div class="flex gap-3 mt-4 md:mt-0">
+                    <button onclick="window.showPage('seeker-marketplace')" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105">
+                        <i class="fas fa-search mr-2"></i> Browse
+                    </button>
+                    <div class="relative">
+                        <button onclick="window.showPage('notifications')" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105">
+                            <i class="fas fa-bell mr-2"></i> Notifications
+                        </button>
+                        <span id="seeker-payment-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse hidden">0</span>
+                    </div>
+                    <div class="relative">
+                        <button onclick="window.showPage('chat')" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                            <i class="fas fa-comments mr-2"></i> Chat
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-5 mb-12">
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="seeker-total-bookings">0</div>
+                    <span class="text-[#e0e0e0] text-sm">Total Bookings</span>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="seeker-pending">0</div>
+                    <span class="text-[#e0e0e0] text-sm">Pending</span>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="seeker-approved">0</div>
+                    <span class="text-[#e0e0e0] text-sm">Approved</span>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="seeker-completed">0</div>
+                    <span class="text-[#e0e0e0] text-sm">Completed</span>
+                </div>
+            </div>
+
+            <div class="mb-12">
+                <h3 class="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                    <i class="fas fa-heart text-[#ff9900]"></i> My Favorites
+                </h3>
+                <div id="seeker-favorites-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+            </div>
+
+            <div>
+                <h3 class="text-2xl font-bold text-white mb-6">Recent Bookings & Requests</h3>
+                <div id="seeker-recent-bookings" class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+        </div>
+
+        <!-- Provider Dashboard -->
+        <div id="provider-dashboard-page" class="page hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
+                <div>
+                    <h2 class="text-4xl font-display font-bold text-white" id="provider-greeting">Provider Dashboard</h2>
+                    <p class="text-[#e0e0e0] mt-1">Manage your services and offers</p>
+                </div>
+                <div class="flex gap-3 mt-4 md:mt-0">
+                    <button onclick="window.showCreateServiceModal()" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105">
+                        <i class="fas fa-plus mr-2"></i> Create Service
+                    </button>
+                    <button onclick="window.showPage('payment-history')" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                        <i class="fas fa-credit-card mr-2"></i> Payments
+                    </button>
+                    <div class="relative">
+                        <button onclick="window.showPage('chat')" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                            <i class="fas fa-comments mr-2"></i> Chat
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-5 mb-12">
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="provider-active-services">0</div>
+                    <span class="text-[#e0e0e0] text-sm">Active Services</span>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="provider-total-bookings">0</div>
+                    <span class="text-[#e0e0e0] text-sm">Total Bookings</span>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="provider-pending">0</div>
+                    <span class="text-[#e0e0e0] text-sm">Pending</span>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-3xl font-bold text-[#ff9900]" id="provider-revenue">PKR 0</div>
+                    <span class="text-[#e0e0e0] text-sm">Total Revenue</span>
+                </div>
+            </div>
+
+            <!-- Nearby Requests Section with Scroll -->
+            <div class="bg-[#121212] rounded-2xl p-6 mb-10 border border-[#2a2a2a]">
+                <h3 class="text-xl font-bold text-white mb-4">📍 Nearby Service Requests</h3>
+                <div id="nearby-requests-container" class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+
+            <div class="bg-[#121212] rounded-2xl p-6 mb-10 border border-[#2a2a2a]">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 rounded-full bg-[#ff9900]/20 flex items-center justify-center">
+                            <i class="fas fa-star text-[#ff9900] text-3xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-white font-bold text-xl">Your Rating</h4>
+                            <div class="flex items-center gap-3 mt-1">
+                                <span class="text-3xl font-bold text-white" id="provider-rating">0.0</span>
+                                <span class="text-yellow-400 text-xl" id="provider-stars">☆☆☆☆☆</span>
+                                <span class="text-[#a0a0a0] text-sm" id="provider-review-count">(0 reviews)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="window.showProviderQRModal()" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                        <i class="fas fa-qrcode mr-2"></i> My QR Code
+                    </button>
+                </div>
+            </div>
+
+            <!-- My Services -->
+            <div class="mb-10">
+                <h3 class="text-2xl font-bold text-white mb-6">My Services</h3>
+                <div id="provider-services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <!-- Recent Bookings with Scroll -->
+            <div class="mb-10">
+                <h3 class="text-2xl font-bold text-white mb-6">Recent Booking Requests</h3>
+                <div id="provider-recent-bookings" class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar pr-2"></div>
+            </div>
+        </div>
+
+        <!-- Payment History Page -->
+        <div id="payment-history-page" class="page hidden">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-display font-bold text-white">Payment History</h2>
+                    <p class="text-[#e0e0e0] mt-1">All your payment transactions</p>
+                </div>
+                <button onclick="window.goBackFromPayments()" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-[#a0a0a0] text-sm mb-2">Total Received</div>
+                    <div class="text-3xl font-bold text-[#ff9900]" id="total-received">PKR 0</div>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-[#a0a0a0] text-sm mb-2">Pending Payments</div>
+                    <div class="text-3xl font-bold text-yellow-500" id="pending-payments">0</div>
+                </div>
+                <div class="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a]">
+                    <div class="text-[#a0a0a0] text-sm mb-2">Completed</div>
+                    <div class="text-3xl font-bold text-green-500" id="completed-payments">0</div>
+                </div>
+            </div>
+
+            <div class="bg-[#121212] rounded-2xl p-6 border border-[#2a2a2a] overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-[#2a2a2a]">
+                            <th class="text-left py-4 px-2 text-[#e0e0e0] font-medium">Date</th>
+                            <th class="text-left py-4 px-2 text-[#e0e0e0] font-medium">Service</th>
+                            <th class="text-left py-4 px-2 text-[#e0e0e0] font-medium">Customer/Provider</th>
+                            <th class="text-left py-4 px-2 text-[#e0e0e0] font-medium">Amount</th>
+                            <th class="text-left py-4 px-2 text-[#e0e0e0] font-medium">Method</th>
+                            <th class="text-left py-4 px-2 text-[#e0e0e0] font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payment-history-table" class="divide-y divide-[#2a2a2a]"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Chat Page -->
+        <div id="chat-page" class="page hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+                <div>
+                    <h2 class="text-3xl font-display font-bold text-white">Messages</h2>
+                    <p class="text-[#e0e0e0] mt-1">Real-time chat</p>
+                </div>
+                <button onclick="window.goBackFromChat()" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- Conversation List -->
-                <div class="lg:col-span-4 glass-card rounded-2xl p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-lg font-bold text-white">Conversations</h3>
-                        <button onclick="refreshConversations()" class="text-primary hover:text-primary-light text-sm font-semibold">
-                            <i class="fas fa-rotate mr-1"></i>Refresh
+                <div class="lg:col-span-4 bg-[#121212] rounded-2xl p-5 border border-[#2a2a2a]">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-white font-bold text-lg">Conversations</h3>
+                        <button onclick="window.refreshConversations()" class="text-[#ff9900] hover:text-[#e47911]">
+                            <i class="fas fa-rotate mr-1"></i> Refresh
                         </button>
                     </div>
-                    <div id="chat-conversations" class="space-y-2 max-h-[60vh] overflow-auto pr-1">
-                        <!-- Conversations will load here -->
-                    </div>
-                    <div id="chat-no-conversations" class="hidden text-center py-8 text-dark-text-secondary">
-                        <i class="fas fa-comments text-3xl mb-3"></i>
-                        <p>No conversations yet.</p>
-                        <p class="text-xs mt-2">Start by clicking Chat on a service/provider.</p>
+                    <div id="chat-conversations" class="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+                    <div id="chat-no-conversations" class="hidden text-center py-12 text-[#a0a0a0]">
+                        <i class="fas fa-comments text-5xl text-[#a0a0a0] mb-4"></i>
+                        <p>No conversations yet</p>
                     </div>
                 </div>
 
-                <!-- Chat Window -->
-                <div class="lg:col-span-8 glass-card rounded-2xl p-4 flex flex-col">
-                    <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+                <div class="lg:col-span-8 bg-[#121212] rounded-2xl p-6 flex flex-col border border-[#2a2a2a]">
+                    <div class="flex items-center justify-between border-b border-[#2a2a2a] pb-4 mb-4">
                         <div>
-                            <h3 class="text-lg font-bold text-white" id="chat-title">Select a conversation</h3>
-                            <p class="text-dark-text-secondary text-sm" id="chat-subtitle">Your messages will appear here</p>
+                            <h3 class="text-xl font-bold text-white" id="chat-title">Select a conversation</h3>
+                            <p class="text-[#a0a0a0] text-sm" id="chat-subtitle">Messages appear instantly</p>
                         </div>
                     </div>
 
-                    <div id="chat-messages" class="flex-1 overflow-auto space-y-3 pr-1 py-2 min-h-[320px]">
-                        <!-- Messages will load here -->
-                    </div>
+                    <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 pr-2 py-4 min-h-[400px] max-h-[500px] custom-scrollbar"></div>
 
-                    <form id="chat-form" class="flex gap-3 pt-3 border-t border-white/10">
-                        <input id="chat-input" type="text" class="input-field flex-1 rounded-xl px-4 py-3 text-white" placeholder="Type a message..." autocomplete="off" />
-                        <button type="submit" class="btn-primary text-white px-5 py-3 rounded-xl font-semibold">
-                            <i class="fas fa-paper-plane mr-2"></i>Send
+                    <form id="chat-form" class="flex gap-4 pt-4 border-t border-[#2a2a2a]">
+                        <div class="relative flex-1">
+                            <input id="chat-input" type="text" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Type a message..." autocomplete="off">
+                        </div>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-4 rounded-xl font-semibold transition-all hover:scale-105">
+                            <i class="fas fa-paper-plane mr-2"></i> Send
                         </button>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Public Profile Page -->
+        <div id="public-profile-page" class="page hidden">
+            <div class="max-w-4xl mx-auto">
+                <button onclick="window.goBackFromProfile()" class="text-[#a0a0a0] hover:text-white mb-6 group flex items-center gap-2">
+                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Back
+                </button>
+                <div id="profile-content" class="bg-[#121212] rounded-3xl p-8 border border-[#2a2a2a]"></div>
+            </div>
+        </div>
+
+        <!-- Provider Payment Requests Page -->
+        <div id="provider-payment-requests-page" class="page hidden">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-display font-bold text-white">Payment Requests</h2>
+                    <p class="text-[#e0e0e0] mt-1">Manage your payment requests</p>
+                </div>
+                <button onclick="window.goBackFromProviderPayments()" class="bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-[#121212] rounded-2xl p-6 border border-[#2a2a2a]">
+                    <h3 class="text-xl font-bold text-white mb-4">Pending Requests</h3>
+                    <div id="provider-pending-requests" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2"></div>
+                </div>
+                <div class="bg-[#121212] rounded-2xl p-6 border border-[#2a2a2a]">
+                    <h3 class="text-xl font-bold text-white mb-4">Completed Requests</h3>
+                    <div id="provider-completed-requests" class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar pr-2"></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- ===== MODALS ===== -->
+    <!-- Modals -->
     
     <!-- Create Service Modal -->
-    <div id="create-service-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-        <div class="glass-card rounded-2xl p-8 max-w-lg w-full">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-white">Create New Service</h3>
-                <button onclick="hideModal('create-service-modal')" 
-                        class="text-dark-text-secondary hover:text-white text-2xl">
-                    &times;
-                </button>
-            </div>
-
-            <div id="create-service-error" class="hidden bg-red-900/20 border border-red-800/30 text-red-300 px-4 py-3 rounded-xl mb-6">
-                <span></span>
-            </div>
-
-            <form id="create-service-form">
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Service Title</label>
-                    <input type="text" 
-                           id="service-title" 
-                           class="input-field w-full rounded-xl px-4 py-3 text-white"
-                           placeholder="e.g., Professional AC Repair"
-                           required>
+    <div id="create-service-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-2xl w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Create New Service</h3>
+                    <button onclick="window.hideModal('create-service-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
                 </div>
-
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Category</label>
-                    <select id="service-category" 
-                            class="input-field w-full rounded-xl px-4 py-3 text-white"
-                            required>
+            </div>
+            <div class="modal-scroll p-8">
+                <div id="create-service-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="create-service-form">
+                    <input type="text" id="service-title" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Service Title" required>
+                    <select id="service-category" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-4 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
                         <option value="">Select Category</option>
                         <option value="Home Services">Home Services</option>
                         <option value="Electrical">Electrical</option>
@@ -889,123 +867,496 @@
                         <option value="Repair">Repair</option>
                         <option value="Other">Other</option>
                     </select>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Description</label>
-                    <textarea id="service-description" 
-                              class="input-field w-full rounded-xl px-4 py-3 text-white h-32"
-                              placeholder="Describe your service in detail..."
-                              required></textarea>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Price (PKR)</label>
-                    <input type="number" 
-                           id="service-price" 
-                           class="input-field w-full rounded-xl px-4 py-3 text-white"
-                           placeholder="e.g., 1500"
-                           min="0"
-                           step="0.01"
-                           required>
-                </div>
-
-                <!-- Location (for H3 radius discovery) -->
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Service Location (Latitude / Longitude)</label>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input type="number" id="service-lat" class="input-field w-full rounded-xl px-4 py-3 text-white" placeholder="Latitude (e.g., 24.8607)" step="0.000001">
-                        <input type="number" id="service-lng" class="input-field w-full rounded-xl px-4 py-3 text-white" placeholder="Longitude (e.g., 67.0011)" step="0.000001">
+                    <textarea id="service-description" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all h-32" placeholder="Detailed description..." required></textarea>
+                    <div class="relative mb-4">
+                        <span class="absolute left-5 top-1/2 -translate-y-1/2 text-[#a0a0a0]">PKR</span>
+                        <input type="number" id="service-price" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl pl-16 pr-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="1500" min="0" step="0.01" required>
                     </div>
-                    <button type="button" id="service-use-location" class="mt-3 btn-secondary text-white px-4 py-2 rounded-xl font-semibold">
-                        <i class="fas fa-location-crosshairs mr-2"></i>Use My Current Location
-                    </button>
-                    <p class="text-dark-text-secondary text-xs mt-2">Optional, but recommended: it enables seekers to find your service within 5/10/25 km using Uber H3.</p>
-                </div>
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('create-service-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-8 py-4 rounded-xl font-semibold transition-all">Cancel</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-4 rounded-xl font-semibold transition-all hover:scale-105">Create Service</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-                <div class="flex justify-end space-x-3 mt-8">
-                    <button type="button" 
-                            onclick="hideModal('create-service-modal')" 
-                            class="btn-secondary text-white px-6 py-3 rounded-xl font-semibold">
-                        Cancel
-                    </button>
-                    <button type="submit" 
-                            class="btn-primary text-white px-6 py-3 rounded-xl font-semibold">
-                        Create Service
-                    </button>
+    <!-- Edit Service Modal -->
+    <div id="edit-service-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-2xl w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Edit Service</h3>
+                    <button onclick="window.hideModal('edit-service-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
                 </div>
-            </form>
+            </div>
+            <div class="modal-scroll p-8">
+                <div id="edit-service-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="edit-service-form">
+                    <input type="hidden" id="edit-service-id">
+                    <input type="text" id="edit-service-title" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Service Title" required>
+                    <select id="edit-service-category" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-4 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
+                        <option value="">Select Category</option>
+                        <option value="Home Services">Home Services</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Cleaning">Cleaning</option>
+                        <option value="Tutoring">Tutoring</option>
+                        <option value="Delivery">Delivery</option>
+                        <option value="Repair">Repair</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <textarea id="edit-service-description" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all h-32" placeholder="Detailed description..." required></textarea>
+                    <div class="relative mb-4">
+                        <span class="absolute left-5 top-1/2 -translate-y-1/2 text-[#a0a0a0]">PKR</span>
+                        <input type="number" id="edit-service-price" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl pl-16 pr-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="1500" min="0" step="0.01" required>
+                    </div>
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('edit-service-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-8 py-4 rounded-xl font-semibold transition-all">Cancel</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-4 rounded-xl font-semibold transition-all hover:scale-105">Update Service</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Service Modal -->
+    <div id="delete-service-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full p-8 border border-[#2a2a2a]">
+            <div class="text-center mb-6">
+                <i class="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
+                <h3 class="text-2xl font-display font-bold text-white">Delete Service</h3>
+                <p class="text-[#e0e0e0] mt-2">Are you sure? This cannot be undone.</p>
+            </div>
+            <input type="hidden" id="delete-service-id">
+            <div class="flex justify-center gap-4">
+                <button onclick="window.hideModal('delete-service-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-8 py-4 rounded-xl font-semibold transition-all">Cancel</button>
+                <button id="confirm-delete-service" class="bg-red-900/50 hover:bg-red-900/70 text-white px-8 py-4 rounded-xl font-semibold transition-all">Delete</button>
+            </div>
         </div>
     </div>
 
     <!-- Book Service Modal -->
-    <div id="book-service-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-        <div class="glass-card rounded-2xl p-8 max-w-md w-full">
+    <div id="book-service-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Book Service</h3>
+                    <button onclick="window.hideModal('book-service-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="modal-scroll p-8">
+                <div id="book-service-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="book-service-form">
+                    <input type="hidden" id="book-service-id">
+                    <div class="mb-5 p-5 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a]">
+                        <div id="book-service-title" class="text-white font-bold text-lg"></div>
+                        <div id="book-service-provider" class="text-[#e0e0e0] text-sm mt-1"></div>
+                        <div id="book-service-price" class="text-[#ff9900] font-bold text-xl mt-2"></div>
+                    </div>
+                    <input type="datetime-local" id="book-time" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-4 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
+                    <textarea id="book-notes" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-6 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all h-24" placeholder="Special instructions (optional)"></textarea>
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('book-service-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">Cancel</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105">Confirm Booking</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Request Modal -->
+    <div id="quick-request-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Post Quick Request</h3>
+                    <button onclick="window.hideModal('quick-request-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="modal-scroll p-8">
+                <div class="bg-[#1e1e1e] p-4 rounded-xl mb-6 border border-[#2a2a2a]">
+                    <div class="flex items-center gap-2 text-[#e0e0e0] text-sm">
+                        <i class="fas fa-info-circle text-[#ff9900]"></i>
+                        <span>Your request will be sent to all nearby providers in this category</span>
+                    </div>
+                </div>
+                <div id="quick-request-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="quick-request-form">
+                    <div class="mb-4">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Service Category</label>
+                        <select id="request-category" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
+                            <option value="">Select Category</option>
+                            <option value="Home Services">Home Services</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Tutoring">Tutoring</option>
+                            <option value="Delivery">Delivery</option>
+                            <option value="Repair">Repair</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Your Offer Price (PKR)</label>
+                        <input type="number" id="request-price" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Enter your price" min="1" step="1" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Service Description</label>
+                        <textarea id="request-description" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all h-24" placeholder="Describe what you need..." required></textarea>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Your Location</label>
+                        <div class="bg-[#1e1e1e] p-3 rounded-xl border border-[#2a2a2a]">
+                            <div class="flex items-center gap-2 text-[#e0e0e0] text-sm mb-2">
+                                <i class="fas fa-map-marker-alt text-[#ff9900]"></i>
+                                <span id="request-location-display" class="truncate flex-1">Using your saved location</span>
+                            </div>
+                            <button type="button" onclick="window.updateRequestLocation()" class="text-[#ff9900] hover:text-[#e47911] text-sm">
+                                <i class="fas fa-sync-alt mr-1"></i> Update Location
+                            </button>
+                        </div>
+                        <input type="hidden" id="request-lat">
+                        <input type="hidden" id="request-lng">
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('quick-request-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">Cancel</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Post Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Make Offer Modal -->
+    <div id="make-offer-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Make an Offer</h3>
+                    <button onclick="window.hideModal('make-offer-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="modal-scroll p-8">
+                <div id="make-offer-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="make-offer-form">
+                    <input type="hidden" id="offer-request-id">
+                    <input type="hidden" id="offer-seeker-id">
+                    
+                    <div class="mb-5 p-5 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a]">
+                        <div id="offer-request-details" class="text-white"></div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Your Offer Price (PKR)</label>
+                        <input type="number" id="offer-price" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Enter your price" min="1" step="1" required>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Message to Customer</label>
+                        <textarea id="offer-message" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all h-24" placeholder="Introduce yourself and your offer..."></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('make-offer-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">Cancel</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105">
+                            <i class="fas fa-hand-holding-usd mr-2"></i>
+                            Submit Offer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Order Modal -->
+    <div id="cancel-order-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Cancel Order</h3>
+                    <button onclick="window.hideModal('cancel-order-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="modal-scroll p-8">
+                <div class="text-center mb-4">
+                    <i class="fas fa-exclamation-triangle text-5xl text-yellow-500 mb-4"></i>
+                    <p class="text-[#e0e0e0]">Please tell us why you're cancelling this order</p>
+                </div>
+                <div id="cancel-order-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="cancel-order-form">
+                    <input type="hidden" id="cancel-booking-id">
+                    <input type="hidden" id="cancel-booking-role">
+                    
+                    <div class="mb-4">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Cancellation Reason</label>
+                        <select id="cancel-reason" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 mb-3 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
+                            <option value="">Select a reason</option>
+                            <option value="Changed my mind">Changed my mind</option>
+                            <option value="Found another provider">Found another provider</option>
+                            <option value="Service no longer needed">Service no longer needed</option>
+                            <option value="Provider unresponsive">Provider unresponsive</option>
+                            <option value="Price too high">Price too high</option>
+                            <option value="Schedule conflict">Schedule conflict</option>
+                            <option value="Customer unresponsive">Customer unresponsive</option>
+                            <option value="Not available">Not available</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Additional Details (Optional)</label>
+                        <textarea id="cancel-details" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all h-24" placeholder="Tell us more..."></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('cancel-order-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">Go Back</button>
+                        <button type="submit" class="bg-red-900/50 hover:bg-red-900/70 text-white px-8 py-3 rounded-xl font-semibold transition-all">
+                            <i class="fas fa-times-circle mr-2"></i>
+                            Confirm Cancellation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rating Modal -->
+    <div id="rating-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white" id="rating-modal-title">Rate Your Experience</h3>
+                    <button onclick="window.hideModal('rating-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="modal-scroll p-8">
+                <div class="text-center mb-4">
+                    <div class="w-20 h-20 rounded-full bg-[#ff9900]/20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-star text-[#ff9900] text-4xl"></i>
+                    </div>
+                    <p class="text-[#e0e0e0]" id="rating-modal-subtitle">How was your experience?</p>
+                </div>
+                <div id="rating-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="rating-form">
+                    <input type="hidden" id="rating-booking-id">
+                    <input type="hidden" id="rating-target-id">
+                    <input type="hidden" id="rating-target-role">
+                    <input type="hidden" id="rating-rater-role">
+                    
+                    <div class="mb-6 text-center">
+                        <div class="text-6xl text-yellow-400 mb-4 flex justify-center gap-2" id="rating-stars">
+                            <i class="far fa-star cursor-pointer hover:text-yellow-400 text-4xl" data-rating="1"></i>
+                            <i class="far fa-star cursor-pointer hover:text-yellow-400 text-4xl" data-rating="2"></i>
+                            <i class="far fa-star cursor-pointer hover:text-yellow-400 text-4xl" data-rating="3"></i>
+                            <i class="far fa-star cursor-pointer hover:text-yellow-400 text-4xl" data-rating="4"></i>
+                            <i class="far fa-star cursor-pointer hover:text-yellow-400 text-4xl" data-rating="5"></i>
+                        </div>
+                        <input type="hidden" id="rating-value" value="0">
+                        <p class="text-[#e0e0e0] text-sm">Click stars to rate</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Your Review</label>
+                        <textarea id="rating-comment" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all h-24" placeholder="Share your experience..."></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('rating-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">Skip</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Submit Rating
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Payment Modal -->
+    <div id="request-payment-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Request Payment</h3>
+                    <button onclick="window.hideModal('request-payment-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="modal-scroll p-8">
+                <div class="bg-[#ff9900]/10 p-4 rounded-xl mb-6 border border-[#ff9900]/30">
+                    <div class="flex items-center gap-3">
+                        <span class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff9900] opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-[#ff9900]"></span>
+                        </span>
+                        <span class="text-[#ff9900] font-semibold text-sm">Instant notification will be sent</span>
+                    </div>
+                </div>
+                <div id="request-payment-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="request-payment-form">
+                    <input type="hidden" id="payment-booking-id">
+                    <div class="mb-5 p-5 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a]">
+                        <div id="payment-service-title" class="text-white font-bold text-lg"></div>
+                        <div id="payment-customer-name" class="text-[#e0e0e0] text-sm mt-1"></div>
+                        <div id="payment-amount" class="text-[#ff9900] font-bold text-xl mt-2">PKR 0</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Payment Method</label>
+                        <select id="payment-method" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" required>
+                            <option value="">Select Payment Method</option>
+                            <option value="JazzCash">JazzCash</option>
+                            <option value="EasyPaisa">EasyPaisa</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Cash">Cash</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Amount (PKR)</label>
+                        <input type="number" id="payment-amount-received" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Enter amount" min="1" step="1" required>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Transaction ID</label>
+                        <input type="text" id="payment-transaction-id" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="e.g., TID123456" required>
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('request-payment-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">Cancel</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105 flex items-center gap-2">
+                            <i class="fas fa-bolt"></i>
+                            Send Instant Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Process Payment Modal -->
+    <div id="process-payment-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full border border-[#2a2a2a]">
+            <div class="p-8 border-b border-[#2a2a2a]">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-2xl font-display font-bold text-white">Complete Payment</h3>
+                    <button onclick="window.hideModal('process-payment-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="modal-scroll p-8">
+                <div id="process-payment-error" class="hidden bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-xl mb-6">
+                    <span></span>
+                </div>
+                <form id="process-payment-form">
+                    <input type="hidden" id="process-payment-id">
+                    <input type="hidden" id="process-booking-id">
+                    
+                    <div class="mb-5 p-5 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a]">
+                        <div id="process-service-title" class="text-white font-bold text-lg"></div>
+                        <div id="process-provider-name" class="text-[#e0e0e0] text-sm mt-1"></div>
+                        <div id="process-payment-amount" class="text-[#ff9900] font-bold text-xl mt-2">PKR 0</div>
+                    </div>
+                    
+                    <div class="mb-6 p-5 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a]">
+                        <h4 class="text-white font-bold mb-3 flex items-center gap-2">
+                            <i class="fas fa-credit-card text-[#ff9900]"></i> Provider Payment Details
+                        </h4>
+                        <div id="provider-payment-info" class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-[#a0a0a0]">Payment Method:</span>
+                                <span id="provider-payment-method-display" class="text-white font-medium">Loading...</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-[#a0a0a0]">Account Details:</span>
+                                <span id="provider-payment-detail-display" class="text-white font-medium">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-[#e0e0e0] text-sm mb-2 block">Your Transaction ID (for confirmation)</label>
+                        <input type="text" id="process-transaction-id" class="w-full bg-[#1e1e1e] border border-[#2a2a2a] rounded-xl px-5 py-4 text-white placeholder-[#a0a0a0] focus:border-[#ff9900] focus:outline-none focus:ring-2 focus:ring-[#ff9900]/20 transition-all" placeholder="Enter transaction ID" required>
+                    </div>
+                    
+                    <div class="flex justify-end gap-4">
+                        <button type="button" onclick="window.hideModal('process-payment-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-6 py-3 rounded-xl font-semibold transition-all">Cancel</button>
+                        <button type="submit" class="bg-[#ff9900] hover:bg-[#e47911] text-white px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Confirm Payment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Payment Modal -->
+    <div id="cancel-payment-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full p-8 border border-[#2a2a2a]">
+            <div class="text-center mb-6">
+                <i class="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
+                <h3 class="text-2xl font-display font-bold text-white">Cancel Payment Request</h3>
+                <p class="text-[#e0e0e0] mt-2">Are you sure you want to cancel this payment request?</p>
+            </div>
+            <input type="hidden" id="cancel-payment-id">
+            <div class="flex justify-center gap-4">
+                <button onclick="window.hideModal('cancel-payment-modal')" class="bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white px-8 py-4 rounded-xl font-semibold transition-all">No, Keep It</button>
+                <button id="confirm-cancel-payment" class="bg-red-900/50 hover:bg-red-900/70 text-white px-8 py-4 rounded-xl font-semibold transition-all">Yes, Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provider QR Modal -->
+    <div id="provider-qr-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-5">
+        <div class="bg-[#121212] rounded-3xl max-w-md w-full p-8 border border-[#2a2a2a]">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-white">Book Service</h3>
-                <button onclick="hideModal('book-service-modal')" 
-                        class="text-dark-text-secondary hover:text-white text-2xl">
-                    &times;
-                </button>
+                <h3 class="text-2xl font-display font-bold text-white">Your Payment QR Code</h3>
+                <button onclick="window.hideModal('provider-qr-modal')" class="text-4xl text-[#a0a0a0] hover:text-white transition-colors">&times;</button>
             </div>
-
-            <div id="book-service-error" class="hidden bg-red-900/20 border border-red-800/30 text-red-300 px-4 py-3 rounded-xl mb-6">
-                <span></span>
+            <div class="text-center mb-6">
+                <div id="provider-qr-code" class="bg-white p-4 rounded-xl inline-block mb-4"></div>
+                <p class="text-[#ff9900] font-semibold" id="provider-qr-name"></p>
+                <p class="text-[#e0e0e0] text-sm mt-2">Customers scan to pay instantly</p>
             </div>
-
-            <form id="book-service-form">
-                <input type="hidden" id="book-service-id">
-                
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Service Title</label>
-                    <div id="book-service-title" class="text-white font-semibold input-field rounded-xl px-4 py-3"></div>
+            <div class="bg-[#1e1e1e] rounded-xl p-4 mb-4">
+                <div class="flex justify-between mb-2">
+                    <span class="text-[#a0a0a0]">Payment Method:</span>
+                    <span id="provider-payment-method-display-qr" class="text-white">Not set</span>
                 </div>
-
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Provider</label>
-                    <div id="book-service-provider" class="text-white input-field rounded-xl px-4 py-3"></div>
+                <div class="flex justify-between">
+                    <span class="text-[#a0a0a0]">Account Details:</span>
+                    <span id="provider-payment-detail-display-qr" class="text-white">Not set</span>
                 </div>
-
-                <div class="mb-4">
-                    <label class="block text-dark-text-secondary mb-2">Select Date & Time</label>
-                    <input type="datetime-local" 
-                           id="book-time" 
-                           class="input-field w-full rounded-xl px-4 py-3 text-white"
-                           required>
-                </div>
-
-                <div class="mb-6">
-                    <label class="block text-dark-text-secondary mb-2">Special Instructions (Optional)</label>
-                    <textarea id="book-notes" 
-                              class="input-field w-full rounded-xl px-4 py-3 text-white h-24"
-                              placeholder="Any special requests..."></textarea>
-                </div>
-
-                <div class="flex justify-end space-x-3">
-                    <button type="button" 
-                            onclick="hideModal('book-service-modal')" 
-                            class="btn-secondary text-white px-6 py-3 rounded-xl font-semibold">
-                        Cancel
-                    </button>
-                    <button type="submit" 
-                            class="btn-primary text-white px-6 py-3 rounded-xl font-semibold">
-                        Confirm Booking
-                    </button>
-                </div>
-            </form>
+            </div>
+            <button onclick="window.hideModal('provider-qr-modal')" class="w-full bg-[#232f3e] hover:bg-[#37475a] text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                Close
+            </button>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div class="text-center">
-            <div class="spinner mx-auto mb-4"></div>
-            <p class="text-white">Loading...</p>
-        </div>
-    </div>
-
-    <!-- ===== JAVASCRIPT ===== -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Supabase Script -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="main.js"></script>
 </body>
 </html>
